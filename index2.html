@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Quản lý Tiến độ</title>
+<meta name="theme-color" content="#0f172a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Tiến độ TĐH"/>
+<link rel="manifest" id="mf"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+<style>
+:root{
+  --bg:#f8fafc;--surface:#fff;--surface2:#f1f5f9;--border:#e2e8f0;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --blue:#2563eb;--blue-light:#eff6ff;--blue-dark:#1d4ed8;
+  --green:#16a34a;--green-light:#f0fdf4;
+  --amber:#d97706;--amber-light:#fffbeb;
+  --red:#dc2626;--red-light:#fef2f2;
+  --purple:#7c3aed;--purple-light:#f5f3ff;
+  --slate:#64748b;
+  --radius:10px;--radius-lg:14px;--radius-xl:18px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.08),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+.app{max-width:1140px;margin:0 auto;padding:24px 16px 80px}
+
+/* TOPBAR */
+.topbar{background:var(--text);color:#fff;position:sticky;top:0;z-index:100;padding:0 20px;box-shadow:var(--shadow-md)}
+.topbar-inner{max-width:1140px;margin:0 auto;display:flex;align-items:center;height:56px;gap:16px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-sub{font-size:11px;color:#94a3b8;margin-top:1px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px;flex-shrink:0}
+.sync-dot.offline{background:#f59e0b}
+.sync-dot.error{background:#ef4444}
+#syncText{font-size:11px;color:#94a3b8}
+
+/* BUTTONS */
+button{cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;border:none;border-radius:var(--radius);padding:8px 14px;transition:all .15s;outline:none}
+.btn{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn:hover{background:var(--border);color:var(--text)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red-light);color:var(--red);border:1px solid #fecaca}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-xs{padding:3px 9px;font-size:11px;border-radius:7px}
+.btn-icon{padding:6px 10px;border-radius:8px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.card-body{padding:16px 20px}
+
+/* METRICS */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+.metric-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.metric-value{font-size:26px;font-weight:700;line-height:1}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:4px;gap:4px;margin-bottom:20px;box-shadow:var(--shadow)}
+.tab{flex:1;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;transition:all .15s;text-align:center}
+.tab.active{background:var(--blue);color:#fff;box-shadow:var(--shadow-md)}
+.tab:hover:not(.active){background:var(--surface2)}
+
+/* PROJECT CARD */
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;transition:box-shadow .2s}
+.proj-card:hover{box-shadow:var(--shadow-md)}
+.proj-row{display:flex;align-items:center;gap:16px;padding:16px 20px;cursor:pointer;flex-wrap:wrap}
+.proj-chevron{font-size:14px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.proj-chevron.open{transform:rotate(180deg)}
+.proj-detail{padding:4px 20px 20px;border-top:1px solid var(--border)}
+
+/* PHASE CARDS */
+.phases-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding-top:16px}
+.phase-card{border-radius:var(--radius-lg);padding:14px 16px;cursor:pointer;border:1.5px solid;transition:transform .15s,box-shadow .15s}
+.phase-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.phase-icon{font-size:18px;margin-bottom:8px}
+.phase-name{font-size:12px;font-weight:700;margin-bottom:8px}
+.phase-pct{font-size:20px;font-weight:800;margin-top:6px}
+.phase-status{font-size:11px;font-weight:600;margin-top:2px}
+.phase-assignee{font-size:11px;color:var(--text3);margin-top:4px}
+.phase-dates{font-size:11px;margin-top:8px;padding-top:8px;border-top:1.5px solid}
+.phase-wd{font-size:11px;font-weight:600;margin-top:2px}
+.phase-files{font-size:11px;font-weight:600;margin-top:6px}
+
+/* PROGRESS BAR */
+.pbar{background:#e2e8f0;border-radius:999px;height:6px;overflow:hidden;margin-top:6px}
+.pbar-fill{height:100%;border-radius:999px;transition:width .4s}
+
+/* STATUS BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;border-bottom:2px solid var(--border);background:var(--surface2);text-align:left;white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface2)}
+.tbl-total td{background:var(--blue-light)!important;font-weight:700;color:var(--blue-dark)}
+
+/* SECTION (CUM) */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)}
+.sec-hdr{display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--surface2);cursor:pointer;border-bottom:1px solid transparent}
+.sec-hdr:hover{background:var(--border)}
+.sec-hdr.open{border-bottom-color:var(--border)}
+.sec-chevron{font-size:12px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.sec-chevron.open{transform:rotate(90deg)}
+
+/* SUMMARY */
+.summary-box{border:2px solid var(--blue);border-radius:var(--radius-lg);overflow:hidden;margin-top:16px}
+.summary-hdr{background:var(--blue);padding:12px 16px;color:#fff;font-weight:700;font-size:13px}
+
+/* FORM */
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);
+  width:100%;transition:border-color .15s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+input[type=range]{width:100%;accent-color:var(--blue);height:4px}
+.form-grid{display:grid;gap:12px}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-grid-6{grid-template-columns:2fr 0.8fr 0.8fr 0.8fr 1.2fr 1.5fr}
+
+/* ADD FORMS */
+.add-form{background:var(--blue-light);border:1px solid #bfdbfe;border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
+.add-form-gc{background:var(--purple-light);border:1px solid #ddd6fe;border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
+.add-item-form{background:var(--blue-light);border-top:1px solid #bfdbfe;padding:14px 16px;display:none}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px}
+.modal{background:var(--surface);border-radius:var(--radius-xl);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-hdr{padding:20px 24px;border-radius:var(--radius-xl) var(--radius-xl) 0 0;display:flex;align-items:center;justify-content:space-between}
+.modal-body{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center}
+
+/* FILE ROW */
+.file-row{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:6px}
+
+/* CONFIRM */
+.confirm-box{background:var(--surface);border-radius:var(--radius-xl);padding:24px;max-width:380px;width:100%;box-shadow:var(--shadow-lg)}
+
+/* HISTORY */
+.hist-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap}
+.hist-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+
+/* INSTALL BAR */
+.install-bar{position:fixed;bottom:0;left:0;right:0;background:var(--text);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:800;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 20px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;z-index:999;display:none;box-shadow:var(--shadow-lg);animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px}
+
+@media(max-width:600px){
+  .form-grid-3{grid-template-columns:1fr 1fr}
+  .form-grid-6{grid-template-columns:1fr 1fr}
+  .phases-grid{grid-template-columns:1fr 1fr}
+  .metrics-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div style="flex:1;min-width:0">
+      <div class="topbar-title" id="appTitle"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:1px">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncText"></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-sm" onclick="expTD()" id="btnExpTD"></button>
+      <button class="btn btn-sm" style="background:#22c55e;color:#fff;border-color:#16a34a" onclick="snapshot()" id="btnSnap"></button>
+      <button class="btn btn-sm" onclick="toggleHist()" id="btnHist"></button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmWrap" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:600;padding:16px">
+  <div class="confirm-box">
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px" id="confirmTitle"></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6" id="confirmMsg"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="confirmCancel()" id="btnHuy"></button>
+      <button class="btn-danger" onclick="confirmOK()" style="padding:8px 18px;font-weight:700" id="btnXoa"></button>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE MODAL WRAP -->
+<div id="phaseModalWrap"></div>
+
+<script>
+// ── STRINGS ────────────────────────────────────────────────
+var S = {
+  appTitle: 'Qu\u1ea3n l\u00fd Ti\u1ebfn \u0111\u1ed9 Thi\u1ebft k\u1ebf T\u0110H',
+  synced: '\u0110\u00e3 \u0111\u1ed3ng b\u1ed9',
+  syncing: '\u0110ang l\u01b0u...',
+  offline: 'Offline \u2014 l\u01b0u c\u1ee5c b\u1ed9',
+  connError: 'L\u1ed7i k\u1ebft n\u1ed1i',
+  connecting: '\u0110ang k\u1ebft n\u1ed1i...',
+  btnTD: '\u21e9 Xu\u1ea5t ti\u1ebfn \u0111\u1ed9',
+  btnSnap: 'L\u01b0u phi\u00ean b\u1ea3n',
+  btnHist: 'L\u1ecbch s\u1eed',
+  confirmTitle: 'X\u00e1c nh\u1eadn x\u00f3a',
+  btnHuy: 'H\u1ee7y',
+  btnXoa: 'X\u00f3a',
+  snapOK: '\u0110\u00e3 l\u01b0u phi\u00ean b\u1ea3n!',
+  importOK: 'Nh\u1eadp d\u1eef li\u1ec7u th\u00e0nh c\u00f4ng!',
+  importFail: 'File kh\u00f4ng h\u1ee3p l\u1ec7.',
+  restoreOK: '\u0110\u00e3 kh\u00f4i ph\u1ee5c!',
+  noHist: 'Ch\u01b0a c\u00f3 l\u1ecbch s\u1eed. Nh\u1ea5n "L\u01b0u phi\u00ean b\u1ea3n" \u0111\u1ec3 t\u1ea1o b\u1ea3n l\u01b0u.',
+  newest: 'M\u1edbi nh\u1ea5t',
+  dlJson: '\u2193 T\u1ea3i JSON',
+  restore: '\u21a9 Kh\u00f4i ph\u1ee5c',
+  importJson: '\u2191 Nh\u1eadp JSON',
+  exportJson: '\u2193 Xu\u1ea5t JSON',
+  histNote: 'Nh\u1eadp file JSON \u0111\u1ec3 kh\u00f4i ph\u1ee5c t\u1eeb backup:',
+  addProj: '+ Th\u00eam d\u1ef1 \u00e1n',
+  newProj: 'D\u1ef1 \u00e1n m\u1edbi',
+  projName: 'T\u00ean d\u1ef1 \u00e1n',
+  projNamePH: 'Nh\u1eadp t\u00ean d\u1ef1 \u00e1n...',
+  client: 'Kh\u00e1ch h\u00e0ng',
+  clientPH: 'T\u00ean kh\u00e1ch h\u00e0ng...',
+  deadline: 'Deadline',
+  createProj: 'T\u1ea1o d\u1ef1 \u00e1n',
+  cancel: 'H\u1ee7y',
+  filterAll: 'T\u1ea5t c\u1ea3',
+  totalProj: 'T\u1ed5ng d\u1ef1 \u00e1n',
+  phaseDone: 'Phase ho\u00e0n th\u00e0nh',
+  inProgress: '\u0110ang th\u1ef1c hi\u1ec7n',
+  completion: 'Ho\u00e0n th\u00e0nh',
+  tabOverview: 'T\u1ed5ng quan',
+  tabBOM: 'BOM & Gia c\u00f4ng',
+  totalProgress: 'Ti\u1ebfn \u0111\u1ed9',
+  clientLabel: 'KH:',
+  dlLabel: 'DL:',
+  deleteProj: 'X\u00f3a d\u1ef1 \u00e1n',
+  confirmDelProj: 'X\u00f3a d\u1ef1 \u00e1n n\u00e0y? To\u00e0n b\u1ed9 BOM s\u1ebd b\u1ecb x\u00f3a.',
+  viewBOM: 'Xem BOM \u2192',
+  clickPhase: 'Click v\u00e0o phase \u0111\u1ec3 c\u1eadp nh\u1eadt ti\u1ebfn \u0111\u1ed9 v\u00e0 \u0111\u00ednh k\u00e8m t\u00e0i li\u1ec7u',
+  selectProj: 'Ch\u1ecdn d\u1ef1 \u00e1n:',
+  noBOM: 'Ch\u1ecdn m\u1ed9t d\u1ef1 \u00e1n \u0111\u1ec3 xem BOM',
+  expVT: 'Xu\u1ea5t v\u1eadt t\u01b0',
+  expGC: 'Xu\u1ea5t gia c\u00f4ng',
+  tabVT: 'V\u1eadt t\u01b0 theo c\u1ee5m',
+  tabGC: 'BOM Gia c\u00f4ng',
+  addCum: '+ Th\u00eam c\u1ee5m',
+  cumNamePH: 'T\u00ean c\u1ee5m...',
+  createCum: 'T\u1ea1o',
+  addItem: '+ Linh ki\u1ec7n',
+  addItemIn: 'Th\u00eam linh ki\u1ec7n v\u00e0o: ',
+  noItems: 'Ch\u01b0a c\u00f3 linh ki\u1ec7n n\u00e0o',
+  summaryTitle: 'T\u1ed5ng h\u1ee3p v\u1eadt t\u01b0 (g\u1ed9p tr\u00f9ng t\u1eeb t\u1ea5t c\u1ea3 c\u1ee5m)',
+  confirmDelCum: 'X\u00f3a c\u1ee5m n\u00e0y v\u00e0 to\u00e0n b\u1ed9 linh ki\u1ec7n b\u00ean trong?',
+  addGC: '+ Th\u00eam gia c\u00f4ng',
+  noGC: 'Ch\u01b0a c\u00f3 h\u1ea1ng m\u1ee5c gia c\u00f4ng',
+  confirmDelGC: 'X\u00f3a h\u1ea1ng m\u1ee5c n\u00e0y?',
+  gcCT: 'Chi ti\u1ebft GC',
+  gcCum: 'C\u1ee5m GC',
+  gcTotal: 'T\u1ed5ng c\u1ed9ng',
+  total: 'T\u1ed5ng c\u1ed9ng',
+  status: 'Tr\u1ea1ng th\u00e1i',
+  assignee: 'Ng\u01b0\u1eddi ph\u1ee5 tr\u00e1ch',
+  startDate: 'B\u1eaft \u0111\u1ea7u',
+  endDate: 'K\u1ebft th\u00fac',
+  progress: 'Ti\u1ebfn \u0111\u1ed9',
+  notes: 'Ghi ch\u00fa',
+  docs: 'T\u00e0i li\u1ec7u / B\u1ea3n v\u1ebd',
+  linkPH: 'D\u00e1n link b\u1ea3n v\u1ebd ho\u1eb7c \u0111\u01b0\u1eddng d\u1eabn file...',
+  addLink: '+ Link',
+  attachFile: '\u21e9 \u0110\u00ednh k\u00e8m',
+  attachHint: 'PDF, PNG, DWG, STP...',
+  noDoc: 'Ch\u01b0a c\u00f3 t\u00e0i li\u1ec7u',
+  open: 'M\u1edf \u2197',
+  view: 'Xem',
+  download: 'T\u1ea3i',
+  save: 'L\u01b0u thay \u0111\u1ed5i',
+  workdays: ' ng\u00e0y l\u00e0m vi\u1ec7c',
+  editVT: 'S\u1eeda v\u1eadt t\u01b0',
+  footer: 'Automation Design Project Tracker \u00b7 D\u1eef li\u1ec7u \u0111\u1ed3ng b\u1ed9 qua Firebase',
+  overdue: 'Qu\u00e1 h\u1ea1n',
+  daysLeft: 'C\u00f2n ',
+  days: ' ng\u00e0y',
+  installing: 'C\u00e0i \u0111\u1eb7t \u1ee9ng d\u1ee5ng',
+  installNow: 'C\u00e0i ngay',
+  stDone: 'Ho\u00e0n th\u00e0nh',
+  stIP: '\u0110ang th\u1ef1c hi\u1ec7n',
+  stRV: '\u0110ang review',
+  stPD: 'Ch\u01b0a b\u1eaft \u0111\u1ea7u',
+  colName: 'T\u00ean v\u1eadt t\u01b0',
+  colQty: 'SL',
+  colUnit: '\u0110V',
+  colNCC: 'Nh\u00e0 cung c\u1ea5p',
+  colPrice: '\u0110\u01a1n gi\u00e1',
+  colTotal: 'Th\u00e0nh ti\u1ec1n',
+  colCode: 'M\u00e3',
+  colType: 'Lo\u1ea1i',
+  colNote: 'Ghi ch\u00fa',
+  itemName: 'T\u00ean v\u1eadt t\u01b0 *',
+  itemNamePH: 'T\u00ean linh ki\u1ec7n...',
+  itemQty: 'S\u1ed1 l\u01b0\u1ee3ng',
+  itemUnit: '\u0110\u01a1n v\u1ecb',
+  itemNCC: 'Nh\u00e0 cung c\u1ea5p',
+  itemPrice: '\u0110\u01a1n gi\u00e1 (\u20ab)',
+  itemStatus: 'Tr\u1ea1ng th\u00e1i',
+  searchPrice: 'T\u00ecm gi\u00e1',
+  gcName: 'T\u00ean chi ti\u1ebft/c\u1ee5m *',
+  gcType: 'Lo\u1ea1i',
+  gcQty: 'SL',
+  gcUnit: '\u0110V',
+  gcPrice: '\u0110\u01a1n gi\u00e1',
+  gcNote: 'Ghi ch\u00fa'
+};
+
+// ── CONSTANTS ──────────────────────────────────────────────
+var ST = {
+  done:         {lb:S.stDone, bg:'#f0fdf4',co:'#16a34a',bo:'#86efac',dk:'#15803d'},
+  'in-progress':{lb:S.stIP,   bg:'#eff6ff',co:'#2563eb',bo:'#93c5fd',dk:'#1d4ed8'},
+  review:       {lb:S.stRV,   bg:'#fffbeb',co:'#d97706',bo:'#fcd34d',dk:'#b45309'},
+  pending:      {lb:S.stPD,   bg:'#f8fafc',co:'#64748b',bo:'#cbd5e1',dk:'#475569'}
+};
+var PH_LB = {concept:'Concept','3d':'3D Model','2d':'2D Drawing',bom:'BOM'};
+var PH_IC = {concept:'&#x1F4A1;','3d':'&#x1F9CA;','2d':'&#x1F4D0;',bom:'&#x1F4CB;'};
+var BSTS = ['\u0110\u00e3 x\u00e1c nh\u1eadn','\u0110\u00e3 \u0111\u1eb7t h\u00e0ng','Ch\u1edd b\u00e1o gi\u00e1'];
+var BUNT = ['c\u00e1i','b\u1ed9','m','kg','cu\u1ed9n','h\u1ed9p','c\u1eb7p','t\u1ea5m','c\u1ee5m'];
+var GCLT = ['Chi ti\u1ebft','C\u1ee5m'];
+var SCOL = {'\u0110\u00e3 x\u00e1c nh\u1eadn':'#16a34a','Ch\u1edd b\u00e1o gi\u00e1':'#dc2626','\u0110\u00e3 \u0111\u1eb7t h\u00e0ng':'#2563eb'};
+var SBGC = {'\u0110\u00e3 x\u00e1c nh\u1eadn':'#f0fdf4','Ch\u1edd b\u00e1o gi\u00e1':'#fef2f2','\u0110\u00e3 \u0111\u1eb7t h\u00e0ng':'#eff6ff'};
+var SK='atpm_d', HK='atpm_h', SK_INIT='atpm_initialized', MH=5;
+
+// ── UTILS ──────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtVND(n){return n>0?n.toLocaleString('vi-VN')+'\u20ab':'—';}
+function fd(d){if(!d)return '—';var t=new Date(d);return t.getDate()+'/'+(t.getMonth()+1)+'/'+t.getFullYear();}
+function workdays(s,e){if(!s||!e)return null;var a=new Date(s),b=new Date(e);if(isNaN(a.getTime())||isNaN(b.getTime())||b<a)return null;var n=0,c=new Date(a);while(c<=b){var d=c.getDay();if(d&&d<6)n++;c.setDate(c.getDate()+1);}return n;}
+function getOverall(ph){var v=Object.values(ph);return Math.round(v.reduce(function(a,p){return a+p.progress;},0)/v.length);}
+function getDL(d){var df=Math.ceil((new Date(d)-new Date())/86400000);if(df<0)return{t:S.overdue,c:'#dc2626',b:'#fef2f2'};if(df<=14)return{t:S.daysLeft+df+S.days,c:'#d97706',b:'#fffbeb'};return{t:S.daysLeft+df+S.days,c:'#16a34a',b:'#f0fdf4'};}
+function pbar(v,c){return '<div class="pbar"><div class="pbar-fill" style="width:'+v+'%;background:'+(c||'#2563eb')+'"></div></div>';}
+function badge(text,bg,color){return '<span class="badge" style="background:'+bg+';color:'+color+'">'+esc(text)+'</span>';}
+var IID=300;function uid(){return 'u'+(++IID);}
+function nextGCId(arr){var n=arr.map(function(i){return parseInt(i.id.replace('GC-',''))||0;});return 'GC-'+String(Math.max.apply(null,[0].concat(n))+1).padStart(3,'0');}
+
+// ── STORAGE ────────────────────────────────────────────────
+function lsGet(k){try{var s=localStorage.getItem(k);return s?JSON.parse(s):null;}catch(e){return null;}}
+function lsSave(p,h){try{localStorage.setItem(SK,JSON.stringify(p));localStorage.setItem(HK,JSON.stringify(h));localStorage.setItem(SK_INIT,'1');}catch(e){}}
+function cloneDeep(o){return JSON.parse(JSON.stringify(o));}
+function pushHist(hist,proj,lb){return [{id:Date.now(),lb:lb,ts:new Date().toLocaleString('vi-VN'),data:cloneDeep(proj)}].concat(hist).slice(0,MH);}
+
+// ── INIT DATA ──────────────────────────────────────────────
+var INIT_DATA=[
+  {id:1,name:'D\u00e2y chuy\u1ec1n \u0111\u00f3ng g\u00f3i t\u1ef1 \u0111\u1ed9ng',client:'Vinamilk',deadline:'2026-06-30',
+   phases:{concept:{status:'done',progress:100,assignee:'Nguy\u1ec5n V\u0103n A',notes:'',files:[],startDate:'2026-03-01',endDate:'2026-03-15'},'3d':{status:'done',progress:100,assignee:'Tr\u1ea7n Th\u1ecb B',notes:'',files:[],startDate:'2026-03-16',endDate:'2026-04-10'},'2d':{status:'in-progress',progress:65,assignee:'L\u00ea V\u0103n C',notes:'',files:[],startDate:'2026-04-01',endDate:'2026-05-15'},bom:{status:'in-progress',progress:40,assignee:'Ph\u1ea1m Th\u1ecb D',notes:'',files:[],startDate:'2026-04-15',endDate:'2026-06-20'}},
+   bom:{cumList:[{id:'CUM-001',name:'C\u1ee5m b\u0103ng t\u1ea3i ch\u00ednh',items:[{id:'i1',name:'\u0110\u1ed9ng c\u01a1 servo 750W',qty:2,unit:'c\u00e1i',status:'\u0110\u00e3 x\u00e1c nh\u1eadn',supplier:'Mitsubishi',price:0},{id:'i2',name:'Bi\u1ebfn t\u1ea7n 5.5kW',qty:1,unit:'c\u00e1i',status:'\u0110\u00e3 x\u00e1c nh\u1eadn',supplier:'Siemens',price:0}]},{id:'CUM-002',name:'C\u1ee5m \u0111i\u1ec1u khi\u1ec3n',items:[{id:'i4',name:'PLC S7-1500',qty:1,unit:'b\u1ed9',status:'\u0110\u00e3 \u0111\u1eb7t h\u00e0ng',supplier:'Siemens',price:0},{id:'i5',name:'HMI 15 inch',qty:1,unit:'c\u00e1i',status:'\u0110\u00e3 \u0111\u1eb7t h\u00e0ng',supplier:'Weintek',price:0}]}],giaCong:[{id:'GC-001',name:'Khung th\u00e9p h\u1ed9p 60x60',qty:120,unit:'m',loai:'Chi ti\u1ebft',donGia:85000,ghiChu:'H\u00e0n tinh'}]}},
+  {id:2,name:'H\u1ec7 th\u1ed1ng ph\u00e2n lo\u1ea1i s\u1ea3n ph\u1ea9m',client:'TH True Milk',deadline:'2026-08-15',
+   phases:{concept:{status:'done',progress:100,assignee:'Nguy\u1ec5n V\u0103n A',notes:'',files:[],startDate:'2026-04-01',endDate:'2026-04-20'},'3d':{status:'in-progress',progress:50,assignee:'Ho\u00e0ng V\u0103n E',notes:'',files:[],startDate:'2026-04-21',endDate:'2026-06-01'},'2d':{status:'pending',progress:0,assignee:'L\u00ea V\u0103n C',notes:'',files:[],startDate:'',endDate:''},bom:{status:'pending',progress:0,assignee:'Ph\u1ea1m Th\u1ecb D',notes:'',files:[],startDate:'',endDate:''}},
+   bom:{cumList:[{id:'CUM-001',name:'C\u1ee5m ph\u00e2n lo\u1ea1i',items:[{id:'i10',name:'C\u1ea3m bi\u1ebfn m\u00e0u s\u1eafc',qty:6,unit:'c\u00e1i',status:'Ch\u1edd b\u00e1o gi\u00e1',supplier:'',price:0}]}],giaCong:[{id:'GC-001',name:'T\u1ea5m \u1ed1p nh\u00f4m',qty:8,unit:'t\u1ea5m',loai:'Chi ti\u1ebft',donGia:420000,ghiChu:''}]}},
+  {id:3,name:'Robot h\u00e0n t\u1ef1 \u0111\u1ed9ng',client:'H\u00f2a Ph\u00e1t',deadline:'2026-05-20',
+   phases:{concept:{status:'done',progress:100,assignee:'Nguy\u1ec5n V\u0103n A',notes:'',files:[],startDate:'2026-02-01',endDate:'2026-02-14'},'3d':{status:'done',progress:100,assignee:'Tr\u1ea7n Th\u1ecb B',notes:'',files:[],startDate:'2026-02-15',endDate:'2026-03-20'},'2d':{status:'done',progress:100,assignee:'L\u00ea V\u0103n C',notes:'',files:[],startDate:'2026-03-10',endDate:'2026-04-15'},bom:{status:'review',progress:90,assignee:'Ph\u1ea1m Th\u1ecb D',notes:'',files:[],startDate:'2026-04-01',endDate:'2026-05-10'}},
+   bom:{cumList:[{id:'CUM-001',name:'C\u1ee5m tay robot',items:[{id:'i20',name:'Servo 1kW',qty:6,unit:'c\u00e1i',status:'\u0110\u00e3 \u0111\u1eb7t h\u00e0ng',supplier:'Mitsubishi',price:0}]}],giaCong:[{id:'GC-001',name:'B\u1ec7 m\u00e1y CNC',qty:1,unit:'c\u00e1i',loai:'Chi ti\u1ebft',donGia:3200000,ghiChu:''}]}}
+];
+
+function initProjects(){
+  var saved=lsGet(SK);
+  if(saved!==null) return saved;
+  if(!localStorage.getItem(SK_INIT)){localStorage.setItem(SK_INIT,'1');return INIT_DATA;}
+  return [];
+}
+
+// ── STATE ──────────────────────────────────────────────────
+var STATE={
+  projects:initProjects(),
+  hist:lsGet(HK)||[],
+  tab:'overview',selId:null,bomPId:null,bomSub:'vattu',filter:'all',showHist:false,openCums:{}
+};
+
+// ── FIREBASE ───────────────────────────────────────────────
+var db=null;
+var _isOnline=false;
+var _fbTimer=null;
+try{
+  firebase.initializeApp({
+    apiKey:'AIzaSyAzBcUvQRBgt7ITBy7tpqWYcBqBNgFofRY',
+    authDomain:'quan-ly-du-an-da802.firebaseapp.com',
+    databaseURL:'https://quan-ly-du-an-da802-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:'quan-ly-du-an-da802',
+    storageBucket:'quan-ly-du-an-da802.firebasestorage.app',
+    messagingSenderId:'283670804509',
+    appId:'1:283670804509:web:da33006c0c640c578c6ef4'
+  });
+  db=firebase.database();
+  db.ref('.info/connected').on('value',function(snap){
+    _isOnline=snap.val()===true;
+    setSyncUI(_isOnline?'ok':'offline');
+  });
+  db.ref('atpm/projects').on('value',function(snap){
+    var data=snap.val();
+    if(!data) return;
+    if(JSON.stringify(data)!==JSON.stringify(STATE.projects)){
+      STATE.projects=data;lsSave(STATE.projects,STATE.hist);render();
+    }
+    setSyncUI('ok');
+  });
+  db.ref('atpm/history').on('value',function(snap){
+    var data=snap.val();
+    if(data&&JSON.stringify(data)!==JSON.stringify(STATE.hist)){STATE.hist=data;}
+  });
+}catch(e){console.warn('Firebase error',e);}
+
+function fbWrite(label){
+  if(_fbTimer) clearTimeout(_fbTimer);
+  setSyncUI('saving');
+  _fbTimer=setTimeout(function(){
+    lsSave(STATE.projects,STATE.hist);
+    if(!db||!_isOnline){setSyncUI('offline');return;}
+    db.ref('atpm/projects').set(STATE.projects);
+    if(label){STATE.hist=pushHist(STATE.hist,STATE.projects,label);db.ref('atpm/history').set(STATE.hist);}
+    setSyncUI('ok');
+  },800);
+}
+
+function setSyncUI(status){
+  var dot=document.getElementById('syncDot');
+  var txt=document.getElementById('syncText');
+  if(!dot||!txt) return;
+  dot.className='sync-dot';
+  if(status==='ok'){txt.textContent=S.synced;}
+  else if(status==='saving'){txt.textContent=S.syncing;dot.className='sync-dot offline';}
+  else if(status==='offline'){txt.textContent=S.offline;dot.className='sync-dot offline';}
+  else{txt.textContent=S.connError;dot.className='sync-dot error';}
+}
+
+// ── SAVE ──────────────────────────────────────────────────
+function save(label){fbWrite(label);}
+
+// ── CONFIRM ────────────────────────────────────────────────
+var _confirmCb=null;
+function showConfirm(msg,cb){
+  _confirmCb=cb;
+  document.getElementById('confirmTitle').textContent=S.confirmTitle;
+  document.getElementById('confirmMsg').textContent=msg;
+  document.getElementById('btnHuy').textContent=S.btnHuy;
+  document.getElementById('btnXoa').textContent=S.btnXoa;
+  var w=document.getElementById('confirmWrap');w.style.display='flex';
+}
+function confirmOK(){document.getElementById('confirmWrap').style.display='none';if(_confirmCb){_confirmCb();_confirmCb=null;}}
+function confirmCancel(){document.getElementById('confirmWrap').style.display='none';_confirmCb=null;}
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
+
+// ── EXPORT ─────────────────────────────────────────────────
+function dlBlob(content,type,fn){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:type}));a.download=fn;document.body.appendChild(a);a.click();a.remove();}
+function dlCSV(rows,fn){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');dlBlob('\uFEFF'+csv,'text/csv;charset=utf-8',fn);}
+function expTD(){var rows=[[S.appTitle],[new Date().toLocaleDateString('vi-VN')],[],['STT','Du an','Khach hang','Deadline','Tong%','Concept','3D','2D','BOM']];STATE.projects.forEach(function(p,i){var o=getOverall(p.phases);rows.push([i+1,p.name,p.client,p.deadline,o+'%',p.phases.concept.progress+'% '+ST[p.phases.concept.status].lb,p.phases['3d'].progress+'% '+ST[p.phases['3d'].status].lb,p.phases['2d'].progress+'% '+ST[p.phases['2d'].status].lb,p.phases.bom.progress+'% '+ST[p.phases.bom.status].lb]);});dlCSV(rows,'TienDo.csv');}
+function expVT(){var p=curBomP();if(!p)return;var rows=[[p.name],[p.client],[],[]];p.bom.cumList.forEach(function(c){rows.push([c.name],['Ten','SL','DV','NCC','Trang thai','Don gia','Thanh tien']);c.items.forEach(function(i){rows.push([i.name,i.qty,i.unit,i.supplier,i.status,i.price||'',i.price?i.qty*i.price:'']);});rows.push([]);});var sum={};p.bom.cumList.reduce(function(a,c){return a.concat(c.items);},[]).forEach(function(i){var k=i.name.toLowerCase();if(!sum[k])sum[k]={name:i.name,qty:0,price:i.price,unit:i.unit};sum[k].qty+=i.qty;if(i.price>0&&!sum[k].price)sum[k].price=i.price;});rows.push(['TONG HOP'],['Ten','Tong SL','DV','Don gia','Thanh tien']);Object.values(sum).forEach(function(r){rows.push([r.name,r.qty,r.unit,r.price||'',r.price?r.qty*r.price:'']);});dlCSV(rows,'VatTu_'+p.name+'.csv');}
+function expGC(){var p=curBomP();if(!p)return;var rows=[[p.name],[p.client],[],['Ma','Ten','Loai','SL','DV','Don gia','Thanh tien','Ghi chu']];p.bom.giaCong.forEach(function(i){rows.push([i.id,i.name,i.loai,i.qty,i.unit,i.donGia,i.qty*i.donGia,i.ghiChu]);});dlCSV(rows,'GiaCong_'+p.name+'.csv');}
+function expJSON(){dlBlob(JSON.stringify(STATE.projects,null,2),'application/json','backup_'+Date.now()+'.json');}
+function impJSON(input){var file=input.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(!Array.isArray(d))throw 0;STATE.projects=d;save('Nhap file: '+file.name);render();toast(S.importOK);}catch(err){alert(S.importFail);}};r.readAsText(file);input.value='';}
+function snapshot(){save(S.btnSnap+' '+new Date().toLocaleString('vi-VN'));toast(S.snapOK);}
+
+// ── HELPERS ────────────────────────────────────────────────
+function findProj(id){return STATE.projects.find(function(p){return p.id===id;});}
+function curBomP(){return STATE.projects.find(function(p){return p.id===STATE.bomPId;});}
+
+// ── PHASE MODAL ────────────────────────────────────────────
+var PM={};
+function openPhaseModal(pid,phase){
+  var proj=findProj(pid);if(!proj)return;
+  PM={pid:pid,phase:phase,data:cloneDeep(proj.phases[phase])};
+  renderPhaseModal();
+}
+function renderPhaseModal(){
+  var d=PM.data,phase=PM.phase,proj=findProj(PM.pid),sc=ST[d.status];
+  var wd=workdays(d.startDate,d.endDate);
+  var files=d.files||[];
+  var filesHtml=files.length===0
+    ?'<div style="text-align:center;padding:16px;border:2px dashed var(--border);border-radius:var(--radius);color:var(--text3);font-size:13px">'+S.noDoc+'</div>'
+    :files.map(function(f,i){
+      var icon=f.type==='link'?'&#128279;':f.fileType&&f.fileType.indexOf('image/')===0?'&#128444;&#65039;':'&#128196;';
+      var btns='';
+      if(f.type==='link') btns+='<a href="'+esc(f.url)+'" target="_blank" class="btn btn-xs" style="background:var(--blue-light);color:var(--blue);text-decoration:none">'+S.open+'</a> ';
+      if(f.type==='file'&&f.dataUrl&&(f.fileType.indexOf('image/')===0||f.fileType==='application/pdf')) btns+='<button class="btn btn-xs" onclick="viewFile('+i+')" style="background:var(--green-light);color:var(--green)">'+S.view+'</button> ';
+      if(f.type==='file'&&f.dataUrl) btns+='<a href="'+f.dataUrl+'" download="'+esc(f.name)+'" class="btn btn-xs" style="background:var(--amber-light);color:var(--amber);text-decoration:none">'+S.download+'</a> ';
+      btns+='<button class="btn btn-xs btn-danger" onclick="removeFile('+i+')">&#10005;</button>';
+      return '<div class="file-row"><span style="font-size:15px">'+icon+'</span><span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.name)+'</span><div style="display:flex;gap:4px;flex-shrink:0">'+btns+'</div></div>';
+    }).join('');
+  var stOpts=Object.entries(ST).map(function(kv){return '<option value="'+kv[0]+'"'+(d.status===kv[0]?' selected':'')+'>'+kv[1].lb+'</option>';}).join('');
+  var html='<div class="modal-bg" onclick="if(event.target===this)closePhaseModal()">'
+    +'<div class="modal"><div class="modal-hdr" style="background:'+sc.co+'">'
+    +'<div><div style="color:#fff;font-weight:800;font-size:16px">'+PH_IC[phase]+' '+PH_LB[phase]+'</div>'
+    +'<div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:2px">'+esc(proj.name)+'</div></div>'
+    +'<button class="modal-close" onclick="closePhaseModal()">&#10005;</button></div>'
+    +'<div class="modal-body">'
+    +'<div class="form-grid form-grid-2">'
+    +'<div class="form-group"><label class="form-label">'+S.status+'</label><select onchange="pmSet(\'status\',this.value)" style="border-color:'+sc.bo+'">'+stOpts+'</select></div>'
+    +'<div class="form-group"><label class="form-label">'+S.assignee+'</label><input value="'+esc(d.assignee)+'" oninput="pmSet(\'assignee\',this.value)"></div>'
+    +'</div>'
+    +'<div class="form-grid form-grid-2">'
+    +'<div class="form-group"><label class="form-label">'+S.startDate+'</label><input type="date" value="'+esc(d.startDate||'')+'" onchange="pmSet(\'startDate\',this.value)"></div>'
+    +'<div class="form-group"><label class="form-label">'+S.endDate+'</label><input type="date" value="'+esc(d.endDate||'')+'" onchange="pmSet(\'endDate\',this.value)"></div>'
+    +'</div>'
+    +(wd!==null?'<div style="background:var(--blue-light);color:var(--blue);border-radius:var(--radius);padding:8px 12px;font-size:12px;font-weight:600">&#9201; '+wd+S.workdays+' (kh\u00f4ng t\u00ednh T7, CN)</div>':'')
+    +'<div class="form-group"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><label class="form-label">'+S.progress+'</label><span style="font-size:15px;font-weight:800;color:'+sc.co+'" id="pmPct">'+d.progress+'%</span></div>'
+    +'<input type="range" min="0" max="100" step="5" value="'+d.progress+'" oninput="pmSet(\'progress\',+this.value);document.getElementById(\'pmPct\').textContent=this.value+\'%\'" style="accent-color:'+sc.co+'">'
+    +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">'+['0%','25%','50%','75%','100%'].map(function(l){return '<span>'+l+'</span>';}).join('')+'</div></div>'
+    +'<div class="form-group"><label class="form-label">'+S.notes+'</label><textarea rows="3" oninput="pmSet(\'notes\',this.value)" style="resize:vertical">'+esc(d.notes)+'</textarea></div>'
+    +'<div class="form-group"><label class="form-label">'+S.docs+'</label>'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px"><input id="pmLink" placeholder="'+S.linkPH+'" style="flex:1"><button class="btn-primary btn-sm" onclick="addLink()">'+S.addLink+'</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px"><input type="file" id="pmFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.dwg,.xlsx,.stp" onchange="addFile(this)"><button class="btn btn-sm" onclick="document.getElementById(\'pmFile\').click()">'+S.attachFile+'</button><span style="font-size:11px;color:var(--text3);align-self:center">'+S.attachHint+'</span></div>'
+    +filesHtml+'</div>'
+    +'<div style="display:flex;gap:10px;padding-top:4px"><button onclick="savePhaseModal()" style="flex:1;padding:12px;border-radius:var(--radius-lg);background:'+sc.co+';color:#fff;font-weight:700;font-size:14px;border:none">'+S.save+'</button>'
+    +'<button class="btn" onclick="closePhaseModal()" style="flex:1;padding:12px;border-radius:var(--radius-lg);font-size:14px">'+S.cancel+'</button></div>'
+    +'</div></div></div>';
+  var w=document.getElementById('phaseModalWrap');w.innerHTML=html;
+}
+function pmSet(k,v){PM.data[k]=v;}
+function addLink(){var el=document.getElementById('pmLink');var v=el.value.trim();if(!v)return;(PM.data.files=PM.data.files||[]).push({type:'link',name:v,url:v});el.value='';renderPhaseModal();}
+function addFile(input){var file=input.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){(PM.data.files=PM.data.files||[]).push({type:'file',name:file.name,fileType:file.type,dataUrl:e.target.result});renderPhaseModal();};r.readAsDataURL(file);}
+function removeFile(i){PM.data.files.splice(i,1);renderPhaseModal();}
+function viewFile(i){var f=PM.data.files[i];if(!f||!f.dataUrl)return;var w=window.open('','_blank');w.document.write('<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh">'+(f.fileType.indexOf('image/')===0?'<img src="'+f.dataUrl+'" style="max-width:100%;max-height:100vh">':'<iframe src="'+f.dataUrl+'" style="width:100vw;height:100vh;border:none"></iframe>')+'</body></html>');}
+function savePhaseModal(){var proj=findProj(PM.pid);if(!proj)return;proj.phases[PM.phase]=cloneDeep(PM.data);save(PH_LB[PM.phase]+' \u2014 '+proj.name);closePhaseModal();render();}
+function closePhaseModal(){document.getElementById('phaseModalWrap').innerHTML='';}
+
+// ── ACTIONS ────────────────────────────────────────────────
+function toggleSel(id){STATE.selId=STATE.selId===id?null:id;render();}
+function renameProj(id,v){var p=findProj(id);if(p)p.name=v;}
+function editClient(id,v){var p=findProj(id);if(p)p.client=v;}
+function editDeadline(id,v){var p=findProj(id);if(p){p.deadline=v;save('C\u1eadp nh\u1eadt deadline');render();}}
+function goBOM(id){STATE.bomPId=id;STATE.tab='bom';render();}
+function delProject(id){showConfirm(S.confirmDelProj,function(){STATE.projects=STATE.projects.filter(function(p){return p.id!==id;});if(STATE.selId===id)STATE.selId=null;if(STATE.bomPId===id)STATE.bomPId=null;save('X\u00f3a d\u1ef1 \u00e1n');render();});}
+function showAddProject(){var el=document.getElementById('addProjForm');if(el)el.style.display='block';}
+function hideAddProject(){var el=document.getElementById('addProjForm');if(el)el.style.display='none';}
+function addProject(){
+  var name=document.getElementById('np_name');var client=document.getElementById('np_client');var dl=document.getElementById('np_deadline');
+  if(!name||!name.value.trim())return;
+  var maxId=STATE.projects.reduce(function(m,p){return Math.max(m,p.id);},0);
+  STATE.projects.push({id:maxId+1,name:name.value.trim(),client:client.value.trim()||'—',deadline:dl.value||'',
+    phases:{concept:{status:'pending',progress:0,assignee:'',notes:'',files:[],startDate:'',endDate:''},'3d':{status:'pending',progress:0,assignee:'',notes:'',files:[],startDate:'',endDate:''},'2d':{status:'pending',progress:0,assignee:'',notes:'',files:[],startDate:'',endDate:''},bom:{status:'pending',progress:0,assignee:'',notes:'',files:[],startDate:'',endDate:''}},
+    bom:{cumList:[],giaCong:[]}});
+  save('Th\u00eam d\u1ef1 \u00e1n: '+name.value.trim());render();toast('T\u1ea1o d\u1ef1 \u00e1n th\u00e0nh c\u00f4ng!');
+}
+function toggleHist(){STATE.showHist=!STATE.showHist;render();}
+function dlHistEntry(i){var e=STATE.hist[i];var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(e.data,null,2)],{type:'application/json'}));a.download='backup_v'+(STATE.hist.length-i)+'.json';document.body.appendChild(a);a.click();a.remove();}
+function restoreHist(i){showConfirm('Kh\u00f4i ph\u1ee5c v\u1ec1 phi\u00ean b\u1ea3n "'+(STATE.hist[i].lb)+'"?\nD\u1eef li\u1ec7u hi\u1ec7n t\u1ea1i s\u1ebd b\u1ecb ghi \u0111\u00e8.',function(){var d=cloneDeep(STATE.hist[i].data);STATE.projects=d;save('Kh\u00f4i ph\u1ee5c t\u1eeb: '+STATE.hist[i].lb);render();toast(S.restoreOK);});}
+function toggleCum(id){STATE.openCums[id]=STATE.openCums[id]===false?true:false;render();}
+function addCum(){var el=document.getElementById('newCumName');if(!el||!el.value.trim())return;var p=curBomP();if(!p)return;p.bom.cumList.push({id:'CUM-'+String(p.bom.cumList.length+1).padStart(3,'0'),name:el.value.trim(),items:[]});save('Th\u00eam c\u1ee5m');render();}
+function delCum(ci){showConfirm(S.confirmDelCum,function(){var p=curBomP();if(!p)return;p.bom.cumList.splice(ci,1);save('X\u00f3a c\u1ee5m');render();});}
+function renameCum(ci,v){var p=curBomP();if(!p)return;p.bom.cumList[ci].name=v;}
+function toggleAddItemForm(id){var el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+function addItem(ci){
+  var g=function(id){return document.getElementById(id);};
+  var name=g('ni_name'+ci);if(!name||!name.value.trim())return;
+  var p=curBomP();if(!p)return;
+  p.bom.cumList[ci].items.push({id:uid(),name:name.value.trim(),qty:+(g('ni_qty'+ci).value)||1,unit:g('ni_unit'+ci).value,supplier:g('ni_supplier'+ci).value,price:+(g('ni_price'+ci).value)||0,status:g('ni_status'+ci).value});
+  save('Th\u00eam linh ki\u1ec7n');render();
+}
+function delItem(ci,ii){showConfirm('X\u00f3a linh ki\u1ec7n n\u00e0y?',function(){var p=curBomP();if(!p)return;p.bom.cumList[ci].items.splice(ii,1);save('X\u00f3a linh ki\u1ec7n');render();});}
+function editItem(ci,ii){
+  var p=curBomP();if(!p)return;var item=p.bom.cumList[ci].items[ii];
+  var name=prompt(S.colName+':',item.name);if(name===null)return;
+  var qty=prompt(S.colQty+':',item.qty);if(qty===null)return;
+  var price=prompt(S.colPrice+' (\u20ab):',item.price);if(price===null)return;
+  var sup=prompt(S.colNCC+':',item.supplier);if(sup===null)return;
+  item.name=name;item.qty=+qty||1;item.price=+price||0;item.supplier=sup;
+  save('S\u1eeda linh ki\u1ec7n');render();
+}
+function searchPrice(name){window.open('https://www.google.com/search?q='+encodeURIComponent(name+' gi\u00e1 b\u00e1n Vi\u1ec7t Nam'),'_blank');}
+function addGC(){
+  var g=function(id){return document.getElementById(id);};
+  var name=g('gc_name');if(!name||!name.value.trim())return;
+  var p=curBomP();if(!p)return;
+  p.bom.giaCong.push({id:nextGCId(p.bom.giaCong),name:name.value.trim(),loai:g('gc_loai').value,qty:+(g('gc_qty').value)||1,unit:g('gc_unit').value,donGia:+(g('gc_donGia').value)||0,ghiChu:g('gc_ghiChu').value});
+  save('Th\u00eam gia c\u00f4ng');render();
+}
+function delGC(i){showConfirm(S.confirmDelGC,function(){var p=curBomP();if(!p)return;p.bom.giaCong.splice(i,1);save('X\u00f3a gia c\u00f4ng');render();});}
+function editGC(i){
+  var p=curBomP();if(!p)return;var item=p.bom.giaCong[i];
+  var name=prompt('T\u00ean:',item.name);if(name===null)return;
+  var qty=prompt('S\u1ed1 l\u01b0\u1ee3ng:',item.qty);if(qty===null)return;
+  var dg=prompt('\u0110\u01a1n gi\u00e1:',item.donGia);if(dg===null)return;
+  var gh=prompt('Ghi ch\u00fa:',item.ghiChu);if(gh===null)return;
+  item.name=name;item.qty=+qty||1;item.donGia=+dg||0;item.ghiChu=gh;
+  save('S\u1eeda gia c\u00f4ng');render();
+}
+
+// ── RENDER ─────────────────────────────────────────────────
+function renderMetrics(){
+  var done=STATE.projects.reduce(function(a,p){return a+Object.values(p.phases).filter(function(ph){return ph.status==='done';}).length;},0);
+  var total=STATE.projects.length*4||1;
+  var inp=STATE.projects.reduce(function(a,p){return a+Object.values(p.phases).filter(function(ph){return ph.status==='in-progress';}).length;},0);
+  var pct=Math.round(done/total*100);
+  return '<div class="metrics-grid">'
+    +'<div class="metric-card"><div class="metric-label">'+S.totalProj+'</div><div class="metric-value" style="color:var(--blue)">'+STATE.projects.length+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">'+S.phaseDone+'</div><div class="metric-value" style="color:var(--green)">'+done+'<span style="font-size:14px;color:var(--text3)">/'+total+'</span></div></div>'
+    +'<div class="metric-card"><div class="metric-label">'+S.inProgress+'</div><div class="metric-value" style="color:var(--amber)">'+inp+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">'+S.completion+'</div><div class="metric-value" style="color:var(--purple)">'+pct+'%</div><div class="metric-sub">'+pbar(pct,'#7c3aed')+'</div></div>'
+    +'</div>';}
+
+function renderHistory(){
+  if(!STATE.showHist) return '';
+  var rows=STATE.hist.length===0
+    ?'<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">'+S.noHist+'</div>'
+    :STATE.hist.map(function(entry,i){
+      return '<div class="hist-row">'
+        +'<div class="hist-num" style="background:'+(i===0?'var(--blue)':'var(--surface2)')+';color:'+(i===0?'#fff':'var(--text2)')+'">'+( STATE.hist.length-i)+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(entry.lb)+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">'+esc(entry.ts)+'</div></div>'
+        +(i===0?'<span class="badge" style="background:var(--blue-light);color:var(--blue);flex-shrink:0">'+S.newest+'</span>':'')
+        +'<div style="display:flex;gap:6px;flex-shrink:0">'
+        +'<button class="btn btn-sm" onclick="dlHistEntry('+i+')">'+S.dlJson+'</button>'
+        +'<button class="btn btn-sm" style="background:var(--amber-light);color:var(--amber);border-color:#fde68a" onclick="restoreHist('+i+')">'+S.restore+'</button>'
+        +'</div></div>';
+    }).join('');
+  return '<div class="card" style="margin-bottom:20px"><div class="card-header"><span style="font-weight:700;font-size:14px">&#128338; '+S.btnHist+'</span><span class="badge" style="background:var(--surface2);color:var(--text2)">Max '+MH+'</span></div>'
+    +'<div class="card-body">'+rows
+    +'<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<span style="font-size:12px;color:var(--text3);flex:1">'+S.histNote+'</span>'
+    +'<input type="file" id="impInput" accept=".json" style="display:none" onchange="impJSON(this)">'
+    +'<button class="btn btn-sm" onclick="document.getElementById(\'impInput\').click()">'+S.importJson+'</button>'
+    +'<button class="btn btn-sm" style="background:var(--green-light);color:var(--green);border-color:#86efac" onclick="expJSON()">'+S.exportJson+'</button>'
+    +'</div></div></div>';}
+
+function renderOverview(){
+  var stOpts='<option value="all"'+(STATE.filter==='all'?' selected':'')+'>'+S.filterAll+'</option>'
+    +Object.entries(ST).map(function(kv){return '<option value="'+kv[0]+'"'+(STATE.filter===kv[0]?' selected':'')+'>'+kv[1].lb+'</option>';}).join('');
+  var filtered=STATE.filter==='all'?STATE.projects:STATE.projects.filter(function(p){return Object.values(p.phases).some(function(ph){return ph.status===STATE.filter;});});
+  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<select onchange="STATE.filter=this.value;render()" style="width:auto;border-radius:var(--radius);padding:8px 12px">'+stOpts+'</select>'
+    +'<button class="btn-primary btn-sm" onclick="showAddProject()" style="margin-left:auto">'+S.addProj+'</button>'
+    +'</div>'
+    +'<div id="addProjForm" style="display:none" class="add-form">'
+    +'<div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:14px">'+S.newProj+'</div>'
+    +'<div class="form-grid form-grid-3" style="margin-bottom:12px">'
+    +'<div class="form-group"><label class="form-label">'+S.projName+' *</label><input id="np_name" placeholder="'+S.projNamePH+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+S.client+'</label><input id="np_client" placeholder="'+S.clientPH+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+S.deadline+'</label><input type="date" id="np_deadline"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-primary btn-sm" onclick="addProject()">'+S.createProj+'</button><button class="btn btn-sm" onclick="hideAddProject()">'+S.cancel+'</button></div>'
+    +'</div>';
+
+  if(filtered.length===0){
+    html+='<div class="empty-state"><div class="empty-icon">&#128203;</div><div class="empty-title">Ch\u01b0a c\u00f3 d\u1ef1 \u00e1n n\u00e0o</div><div style="font-size:13px">Nh\u1ea5n "+ Th\u00eam d\u1ef1 \u00e1n" \u0111\u1ec3 b\u1eaft \u0111\u1ea7u</div></div>';
+    return html;
+  }
+
+  filtered.forEach(function(project){
+    var ov=getOverall(project.phases),dl=getDL(project.deadline),isO=STATE.selId===project.id;
+    html+='<div class="proj-card">'
+      +'<div class="proj-row" onclick="toggleSel('+project.id+')">'
+      +'<div style="flex:1;min-width:0">';
+    if(isO){
+      html+='<input value="'+esc(project.name)+'" onclick="event.stopPropagation()" oninput="renameProj('+project.id+',this.value)" style="font-weight:700;font-size:15px;border:none;border-bottom:2px solid var(--blue);background:transparent;padding:2px 0;width:100%;outline:none;color:var(--text)">';
+      html+='<div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text3)">'+S.clientLabel+'</span>'
+        +'<input value="'+esc(project.client)+'" onclick="event.stopPropagation()" oninput="editClient('+project.id+',this.value)" style="font-size:12px;border:none;border-bottom:1px solid var(--border);background:transparent;padding:1px 4px;color:var(--text2);min-width:100px">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text3)">'+S.dlLabel+'</span>'
+        +'<input type="date" value="'+esc(project.deadline||'')+'" onclick="event.stopPropagation()" onchange="editDeadline('+project.id+',this.value)" style="font-size:12px;border:none;border-bottom:1px solid var(--border);background:transparent;padding:1px 4px;color:var(--text2)">'
+        +'</div>';
+    } else {
+      html+='<div style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(project.name)+'</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:3px">'+esc(project.client)+'</div>';
+    }
+    html+='</div>'
+      +'<span class="badge" style="background:'+dl.b+';color:'+dl.c+';flex-shrink:0">'+dl.t+'</span>'
+      +'<div style="min-width:110px;flex-shrink:0"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">'+S.totalProgress+' '+ov+'%</div>'+pbar(ov)+'</div>'
+      +'<span class="proj-chevron'+(isO?' open':'')+'">&#9660;</span>'
+      +'</div>';
+
+    if(isO){
+      html+='<div class="proj-detail"><div class="phases-grid">';
+      ['concept','3d','2d','bom'].forEach(function(ph){
+        var data=project.phases[ph],sc=ST[data.status],wd=workdays(data.startDate,data.endDate);
+        html+='<div class="phase-card" style="background:'+sc.bg+';border-color:'+sc.bo+'" onclick="openPhaseModal('+project.id+',\''+ph+'\')">'
+          +'<div class="phase-icon">'+PH_IC[ph]+'</div>'
+          +'<div class="phase-name" style="color:'+sc.dk+'">'+PH_LB[ph]+'</div>'
+          +pbar(data.progress,sc.co)
+          +'<div class="phase-pct" style="color:'+sc.dk+'">'+data.progress+'%</div>'
+          +'<div class="phase-status" style="color:'+sc.co+'">'+sc.lb+'</div>'
+          +'<div class="phase-assignee">'+esc(data.assignee||'—')+'</div>';
+        if(data.startDate||data.endDate){html+='<div class="phase-dates" style="border-color:'+sc.bo+';color:'+sc.dk+'">'+fd(data.startDate)+' \u2192 '+fd(data.endDate);if(wd)html+='<div class="phase-wd" style="color:'+sc.co+'">&#9201; '+wd+S.workdays+'</div>';html+='</div>';}
+        if((data.files||[]).length>0)html+='<div class="phase-files" style="color:'+sc.co+'">&#128206; '+(data.files.length)+' t\u00e0i li\u1ec7u</div>';
+        html+='</div>';
+      });
+      html+='</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:8px">'
+        +'<span style="font-size:12px;color:var(--text3)">'+S.clickPhase+'</span>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-sm" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="goBOM('+project.id+')">'+S.viewBOM+'</button>'
+        +'<button class="btn btn-sm btn-danger" onclick="delProject('+project.id+')">'+S.deleteProj+'</button>'
+        +'</div></div></div>';
+    }
+    html+='</div>';
+  });
+  return html;}
+
+function renderVatTu(p){
+  var html='<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">'
+    +'<button class="btn-primary btn-sm" onclick="toggleAddCumUI()">'+S.addCum+'</button>'
+    +'<input id="newCumName" placeholder="'+S.cumNamePH+'" style="width:auto;min-width:180px;display:none">'
+    +'<button id="newCumBtn" class="btn-primary btn-sm" onclick="addCum()" style="display:none">'+S.createCum+'</button>'
+    +'</div>';
+
+  p.bom.cumList.forEach(function(cum,ci){
+    var isO=STATE.openCums[cum.id]!==false;
+    var tot=cum.items.reduce(function(s,i){return s+i.qty*(i.price||0);},0);
+    var fid='addItemForm_'+ci;
+    html+='<div class="section">'
+      +'<div class="sec-hdr'+(isO?' open':'')+'" onclick="toggleCum(\''+cum.id+'\')">'
+      +'<span class="sec-chevron'+(isO?' open':'')+'">&#9654;</span>'
+      +'<div style="flex:1;min-width:0">'
+      +'<input value="'+esc(cum.name)+'" onclick="event.stopPropagation()" oninput="renameCum('+ci+',this.value)" style="background:none;border:none;font-size:14px;font-weight:700;color:var(--text);width:100%;outline:none;padding:0">'
+      +'<div style="font-size:12px;color:var(--text3)">'+cum.items.length+' linh ki\u1ec7n'+(tot>0?' &middot; <span style="color:var(--green);font-weight:600">'+fmtVND(tot)+'</span>':'')+'</div>'
+      +'</div>'
+      +'<button class="btn btn-sm" style="background:var(--blue-light);color:var(--blue);border-color:#bfdbfe" onclick="event.stopPropagation();toggleAddItemForm(\''+fid+'\')">'+S.addItem+'</button>'
+      +'<button class="btn btn-xs btn-danger" onclick="event.stopPropagation();delCum('+ci+')">&#128465;</button>'
+      +'</div>'
+      +'<div class="add-item-form" id="'+fid+'">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">'+S.addItemIn+esc(cum.name)+'</div>'
+      +'<div class="form-grid" style="grid-template-columns:2fr 0.7fr 0.8fr 1.2fr 1.2fr 1.3fr;gap:8px;margin-bottom:10px">';
+    [['ni_name'+ci,S.itemName,'text','',S.itemNamePH],['ni_qty'+ci,S.itemQty,'number','1',''],['ni_unit'+ci,S.itemUnit,'sel-unit','',''],['ni_supplier'+ci,S.itemNCC,'text','',''],['ni_price'+ci,S.itemPrice,'number','0',''],['ni_status'+ci,S.itemStatus,'sel-st','','']].forEach(function(row){
+      var id=row[0],lb=row[1],type=row[2],val=row[3],ph=row[4];
+      var ctrl=type==='sel-unit'?'<select id="'+id+'">'+BUNT.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'
+        :type==='sel-st'?'<select id="'+id+'">'+BSTS.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'
+        :'<input type="'+(type==='number'?'number':'text')+'" id="'+id+'" value="'+val+'" placeholder="'+ph+'">';
+      html+='<div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">'+lb+'</div>'+ctrl+'</div>';
+    });
+    html+='</div><div style="display:flex;gap:8px"><button class="btn-primary btn-sm" onclick="addItem('+ci+')">Th\u00eam</button><button class="btn btn-sm" onclick="toggleAddItemForm(\''+fid+'\')">'+S.cancel+'</button></div></div>';
+
+    if(isO){
+      if(cum.items.length===0){
+        html+='<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">'+S.noItems+'</div>';
+      } else {
+        html+='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>'+S.colName+'</th><th>'+S.colQty+'</th><th>'+S.colUnit+'</th><th>'+S.colNCC+'</th><th>'+S.status+'</th><th>'+S.colPrice+'</th><th></th></tr></thead><tbody>';
+        cum.items.forEach(function(item,ii){
+          html+='<tr><td style="font-weight:500">'+esc(item.name)+'</td>'
+            +'<td style="text-align:right;font-weight:600">'+item.qty+'</td>'
+            +'<td style="color:var(--text3)">'+esc(item.unit)+'</td>'
+            +'<td>'+esc(item.supplier||'—')+'</td>'
+            +'<td>'+badge(item.status,SBGC[item.status]||'#f1f5f9',SCOL[item.status]||'#475569')+'</td>'
+            +'<td style="color:'+(item.price>0?'var(--green)':'var(--text3)')+';font-weight:'+(item.price>0?700:400)+'">'+( item.price>0?fmtVND(item.price):'—')+'</td>'
+            +'<td style="white-space:nowrap">'
+            +'<button class="btn btn-xs" style="background:var(--blue-light);color:var(--blue);border-color:#bfdbfe;margin-right:4px" onclick="searchPrice(\''+esc(item.name)+'\')">&#128269;</button>'
+            +'<button class="btn btn-xs" style="margin-right:4px" onclick="editItem('+ci+','+ii+')">&#9999;&#65039;</button>'
+            +'<button class="btn btn-xs btn-danger" onclick="delItem('+ci+','+ii+')">&#128465;</button>'
+            +'</td></tr>';
+        });
+        html+='</tbody></table></div>';
+      }
+    }
+    html+='</div>';
+  });
+
+  // Summary
+  var allItems=p.bom.cumList.reduce(function(a,c){return a.concat(c.items);},[]);
+  var sum={};allItems.forEach(function(i){var k=i.name.toLowerCase();if(!sum[k])sum[k]={name:i.name,qty:0,unit:i.unit,price:i.price,supplier:i.supplier};sum[k].qty+=i.qty;if(i.price>0&&!sum[k].price)sum[k].price=i.price;});
+  var srows=Object.values(sum).sort(function(a,b){return a.name.localeCompare(b.name);});
+  if(srows.length){
+    var gTotal=srows.reduce(function(s,r){return s+r.qty*(r.price||0);},0);
+    html+='<div class="summary-box"><div class="summary-hdr">&#128202; '+S.summaryTitle+'</div>'
+      +'<div style="overflow-x:auto"><table class="tbl"><thead><tr style="background:var(--blue-light)"><th style="color:var(--blue)">'+S.colName+'</th><th style="color:var(--blue)">'+S.colQty+'</th><th style="color:var(--blue)">'+S.colUnit+'</th><th style="color:var(--blue)">'+S.colNCC+'</th><th style="color:var(--blue)">'+S.colPrice+'</th><th style="color:var(--blue)">'+S.colTotal+'</th></tr></thead><tbody>';
+    srows.forEach(function(r){
+      html+='<tr><td style="font-weight:500">'+esc(r.name)+'</td><td style="text-align:right;font-weight:700;color:var(--blue)">'+r.qty+'</td><td style="color:var(--text3)">'+esc(r.unit)+'</td><td>'+esc(r.supplier||'—')+'</td><td>'+( r.price>0?fmtVND(r.price):'—')+'</td><td style="color:var(--green);font-weight:700">'+( r.price>0?fmtVND(r.qty*r.price):'—')+'</td></tr>';
+    });
+    html+='<tr class="tbl-total"><td colspan="5">'+S.total+'</td><td>'+fmtVND(gTotal)+'</td></tr>';
+    html+='</tbody></table></div></div>';
+  }
+  return html;}
+
+function renderGiaCong(p){
+  var items=p.bom.giaCong;
+  var tC=items.filter(function(i){return i.loai==='Chi ti\u1ebft';}).reduce(function(s,i){return s+i.qty*i.donGia;},0);
+  var tCu=items.filter(function(i){return i.loai==='C\u1ee5m';}).reduce(function(s,i){return s+i.qty*i.donGia;},0);
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px">'
+    +[{l:S.gcCT,v:tC,c:'var(--blue)'},{l:S.gcCum,v:tCu,c:'var(--purple)'},{l:S.gcTotal,v:tC+tCu,c:'var(--green)'}].map(function(m){
+      return '<div class="metric-card"><div class="metric-label">'+m.l+'</div><div class="metric-value" style="color:'+m.c+'">'+fmtVND(m.v)+'</div></div>';
+    }).join('')+'</div>'
+    +'<div id="gcForm" style="display:none" class="add-form-gc">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:12px">+ Th\u00eam h\u1ea1ng m\u1ee5c gia c\u00f4ng</div>'
+    +'<div class="form-grid form-grid-6" style="margin-bottom:10px">';
+  [['gc_name',S.gcName,'text','',S.gcName],['gc_loai',S.gcType,'sel-gc','',''],['gc_qty',S.gcQty,'number','1',''],['gc_unit',S.gcUnit,'sel-unit','',''],['gc_donGia',S.gcPrice,'number','0',''],['gc_ghiChu',S.gcNote,'text','','']].forEach(function(row){
+    var id=row[0],lb=row[1],type=row[2],val=row[3];
+    var ctrl=type==='sel-gc'?'<select id="'+id+'">'+GCLT.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'
+      :type==='sel-unit'?'<select id="'+id+'">'+BUNT.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'
+      :'<input type="'+(type==='number'?'number':'text')+'" id="'+id+'" value="'+val+'">';
+    html+='<div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">'+lb+'</div>'+ctrl+'</div>';
+  });
+  html+='</div><div style="display:flex;gap:8px"><button class="btn-purple btn-sm" onclick="addGC()" style="background:var(--purple)">Th\u00eam</button><button class="btn btn-sm" onclick="document.getElementById(\'gcForm\').style.display=\'none\'">'+S.cancel+'</button></div></div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:12px">'
+    +'<button class="btn btn-sm" style="background:var(--purple);color:#fff;border-color:var(--purple)" onclick="toggleGCForm()">'+S.addGC+'</button></div>'
+    +'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>'+S.colCode+'</th><th>'+S.colNameGC+'</th><th>'+S.colType+'</th><th>'+S.colQty+'</th><th>'+S.colUnit+'</th><th>'+S.colPrice+'</th><th>'+S.colTotal+'</th><th>'+S.colNote+'</th><th></th></tr></thead><tbody>';
+
+  var colNameGC='T\u00ean chi ti\u1ebft/c\u1ee5m';
+
+  if(!items.length) html+='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">'+S.noGC+'</td></tr>';
+  items.forEach(function(item,i){
+    var tt=item.qty*item.donGia;
+    var lb=item.loai==='C\u1ee5m'?{bg:'var(--purple-light)',c:'var(--purple)'}:{bg:'var(--blue-light)',c:'var(--blue)'};
+    html+='<tr><td style="color:var(--text3);font-size:12px;font-weight:600">'+esc(item.id)+'</td>'
+      +'<td style="font-weight:500">'+esc(item.name)+'</td>'
+      +'<td>'+badge(item.loai,lb.bg,lb.c)+'</td>'
+      +'<td style="text-align:right;font-weight:600">'+item.qty+'</td>'
+      +'<td style="color:var(--text3)">'+esc(item.unit)+'</td>'
+      +'<td>'+( item.donGia>0?fmtVND(item.donGia):'—')+'</td>'
+      +'<td style="color:var(--green);font-weight:700">'+( tt>0?fmtVND(tt):'—')+'</td>'
+      +'<td style="color:var(--text3);font-size:12px">'+esc(item.ghiChu||'—')+'</td>'
+      +'<td style="white-space:nowrap"><button class="btn btn-xs" style="margin-right:4px" onclick="editGC('+i+')">&#9999;&#65039;</button><button class="btn btn-xs btn-danger" onclick="delGC('+i+')">&#128465;</button></td></tr>';
+  });
+  if(items.length) html+='<tr class="tbl-total"><td colspan="6">'+S.total+'</td><td>'+fmtVND(items.reduce(function(s,i){return s+i.qty*i.donGia;},0))+'</td><td colspan="2"></td></tr>';
+  html+='</tbody></table></div>';
+  return html;}
+
+function toggleAddCumUI(){
+  var inp=document.getElementById('newCumName');var btn=document.getElementById('newCumBtn');
+  if(!inp)return;var h=inp.style.display==='none';
+  inp.style.display=h?'':'none';btn.style.display=h?'':'none';if(h)inp.focus();
+}
+function toggleGCForm(){var el=document.getElementById('gcForm');if(el)el.style.display=el.style.display==='none'?'block':'none';}
+
+function renderBOM(){
+  var p=curBomP();
+  var projBtns=STATE.projects.map(function(pr){
+    var active=STATE.bomPId===pr.id;
+    return '<button onclick="STATE.bomPId='+pr.id+';render()" style="padding:7px 14px;border-radius:var(--radius);border:1.5px solid '+(active?'var(--blue)':'var(--border)')+';background:'+(active?'var(--blue)':'var(--surface)')+';color:'+(active?'#fff':'var(--text2)')+';font-weight:'+(active?700:400)+';font-size:13px">'+esc(pr.name)+'</button>';
+  }).join('');
+  var html='<div class="card" style="margin-bottom:16px"><div class="card-header" style="flex-wrap:wrap;gap:10px">'
+    +'<span style="font-size:13px;font-weight:700;color:var(--text2)">'+S.selectProj+'</span>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+projBtns+'</div>'
+    +'</div></div>';
+  if(!p){return html+'<div class="empty-state"><div class="empty-icon">&#128297;</div><div class="empty-title">'+S.noBOM+'</div></div>';}
+  html+='<div class="card">'
+    +'<div class="card-header"><div style="flex:1"><div style="font-weight:700;font-size:16px">'+esc(p.name)+'</div><div style="font-size:12px;color:var(--text3);margin-top:2px">'+esc(p.client)+'</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-sm" style="background:var(--amber-light);color:var(--amber);border-color:#fde68a" onclick="expVT()">'+S.expVT+'</button>'
+    +'<button class="btn btn-sm" style="background:var(--purple-light);color:var(--purple);border-color:#ddd6fe" onclick="expGC()">'+S.expGC+'</button>'
+    +'</div></div>'
+    +'<div class="card-body">'
+    +'<div class="tabs" style="margin-bottom:16px">'
+    +'<button class="tab'+(STATE.bomSub==='vattu'?' active':'')+'" onclick="STATE.bomSub=\'vattu\';render()">'+S.tabVT+'</button>'
+    +'<button class="tab'+(STATE.bomSub==='giacong'?' active':'')+'" onclick="STATE.bomSub=\'giacong\';render()">'+S.tabGC+'</button>'
+    +'</div>'
+    +(STATE.bomSub==='vattu'?renderVatTu(p):renderGiaCong(p))
+    +'</div></div>';
+  return html;}
+
+function render(){
+  // Update topbar static text
+  document.getElementById('appTitle').textContent=S.appTitle;
+  document.getElementById('btnExpTD').textContent=S.btnTD;
+  document.getElementById('btnSnap').textContent=S.btnSnap;
+  document.getElementById('btnHist').textContent=S.btnHist+(STATE.hist.length?' ('+STATE.hist.length+')':'');
+  if(!document.getElementById('syncText').textContent) setSyncUI('connecting');
+
+  var html=renderHistory()+renderMetrics();
+  html+='<div class="tabs"><button class="tab'+(STATE.tab==='overview'?' active':'')+'" onclick="STATE.tab=\'overview\';render()">'+S.tabOverview+'</button><button class="tab'+(STATE.tab==='bom'?' active':'')+'" onclick="STATE.tab=\'bom\';render()">'+S.tabBOM+'</button></div>';
+  html+=STATE.tab==='overview'?renderOverview():renderBOM();
+  html+='<div style="margin-top:32px;text-align:center;font-size:12px;color:var(--text3);padding:16px 0">'+S.footer+'</div>';
+  document.getElementById('app').innerHTML=html;
+}
+
+render();
+
+// ── PWA ────────────────────────────────────────────────────
+(function(){
+  function makeIcon(sz){var c=document.createElement('canvas');c.width=sz;c.height=sz;var x=c.getContext('2d');x.fillStyle='#2563eb';x.beginPath();var r=sz*0.2;x.moveTo(r,0);x.arcTo(sz,0,sz,sz,r);x.arcTo(sz,sz,0,sz,r);x.arcTo(0,sz,0,0,r);x.arcTo(0,0,sz,0,r);x.closePath();x.fill();x.fillStyle='#fff';var s=sz*0.55,px=(sz-s)/2,py=sz*0.22;x.beginPath();x.roundRect(px,py,s,s*1.1,s*0.08);x.fill();x.fillStyle='#2563eb';[0,1,2,3].forEach(function(i){x.fillStyle=i===0?'#2563eb':'#93c5fd';x.beginPath();x.roundRect(px+s*0.12,py+s*0.18+i*s*0.22,s*(i===0?0.76:0.55),s*0.08,4);x.fill();});return c.toDataURL();}
+  var mf={name:S.appTitle,short_name:'Ti\u1ebfn \u0111\u1ed9',start_url:'.',display:'standalone',background_color:'#f8fafc',theme_color:'#2563eb',icons:[{src:makeIcon(192),sizes:'192x192',type:'image/png'},{src:makeIcon(512),sizes:'512x512',type:'image/png'}]};
+  document.getElementById('mf').href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/json'}));
+  if('serviceWorker' in navigator){var sw='self.addEventListener("install",function(e){self.skipWaiting();});self.addEventListener("fetch",function(e){e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request);}));});';navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(function(){});}
+  var dp=null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;var bar=document.createElement('div');bar.className='install-bar';bar.innerHTML='<span style="font-size:13px;font-weight:600">&#128640; '+S.installing+'</span><div style="display:flex;gap:8px"><button class="btn-primary btn-sm" id="instBtn">'+S.installNow+'</button><button class="btn btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1)" onclick="this.parentElement.parentElement.remove()">&#10005;</button></div>';document.body.appendChild(bar);document.getElementById('instBtn').onclick=function(){dp.prompt();dp.userChoice.then(function(){dp=null;bar.remove();});};});
+})();
+</script>
+</body>
+</html>
